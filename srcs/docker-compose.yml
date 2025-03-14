@@ -1,0 +1,47 @@
+version: "3.8"
+services:
+  nginx:
+    image: nginx:mine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    build: ./requirements/nginx
+    restart: always
+    depends_on:
+      - wordpress
+    networks:
+      - app_network
+    volumes:
+      - wordpress_files:/var/www/html
+
+  wordpress:
+    image: wordpress:mine
+    container_name: wordpress
+    ports:
+      - "9000:9000"
+    build: ./requirements/wordpress
+    restart: always
+    networks:
+      - app_network
+    volumes:
+      - wordpress_files:/var/www/html
+
+  db:
+    image: mariadb:mine
+    container_name: mariadb
+    ports:
+      - "3306:3306"
+    build: ./requirements/mariadb
+    networks:
+      - app_network
+    restart: always
+    environment:
+      WORDPRESS_NAME: wordpress
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  wordpress_files:
