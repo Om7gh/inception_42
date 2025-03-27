@@ -11,7 +11,7 @@ RUN mkdir -p /etc/nginx/ssl
 RUN openssl req -x509 -days 90 -nodes -newkey rsa:4096 \
     -keyout /etc/nginx/ssl/selfsigned_certificate.com.key \
     -out /etc/nginx/ssl/selfsigned_certificate.com.crt \
-    -subj "/C=XX/ST=MR/L=SALE/O=SALE/OU=1337/CN=localhost"
+    -subj "/C=MO/ST=SALE/L=SALE/O=SALE/OU=1337/CN=localhost"
 
 COPY ./conf/nginx.conf /etc/nginx/nginx.conf
 

@@ -1,47 +1,96 @@
+
 version: "3.8"
 services:
-  nginx:
-    image: nginx:mine
-    container_name: nginx
+  proxy:
+    build: requirements/nginx
+    container_name: proxy
+    image: proxy:mine
+    env_file:
+      - .env
+    depends_on:
+      - wordpress
     ports:
-      - "80:80"
       - "443:443"
-    build: ./requirements/nginx
-    restart: always
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - inception
+    restart:
+      on-failure
+
+  mariadb:
+    build: requirements/mariadb
+    container_name: mariadb
+    image: mariadb:mine
+    env_file:
+      - .env
+    volumes:
+      - mariadb:/var/lib/mysql
+    networks:
+      - inception
+    restart:
+      on-failure
+
+  wordpress:
+    build: requirements/wordpress
+    container_name: wordpress
+    image: wordpress:mine
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - inception
+    restart:
+      on-failure
+  
+  redis:
+    build: requirements/bonus/redis
+    container_name: redis
+    image: redis:mine
+    env_file:
+      - .env
     depends_on:
       - wordpress
     networks:
-      - app_network
-    volumes:
-      - wordpress_files:/var/www/html
+      - inception
+    restart:
+      on-failure
 
-  wordpress:
-    image: wordpress:mine
-    container_name: wordpress
-    ports:
-      - "9000:9000"
-    build: ./requirements/wordpress
-    restart: always
+  ftp:
+    build: requirements/bonus/ftp
+    container_name: ftp
+    image: ftp:mine
+    env_file:
+      - .env
+    depends_on:
+      - wordpress
     networks:
-      - app_network
+      - inecption
+    restart:
+      on-failure
     volumes:
-      - wordpress_files:/var/www/html
-
-  db:
-    image: mariadb:mine
-    container_name: mariadb
-    ports:
-      - "3306:3306"
-    build: ./requirements/mariadb
-    networks:
-      - app_network
-    restart: always
-    environment:
-      WORDPRESS_NAME: wordpress
-
-networks:
-  app_network:
-    driver: bridge
+      - ftp:/etc/ftpd
 
 volumes:
-  wordpress_files:
+  wordpress:
+    name: wordpress
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: "/home/${LOGIN}/data/wordpress"
+  mariadb:
+    name: mariadb
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: "/home/${LOGIN}/data/mariadb"
+
+networks:
+  inception:
+    name: inception
+    driver: bridge
