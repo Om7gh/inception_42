@@ -2,7 +2,7 @@ FROM debian:11
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
-    openssl && \
+    openssl apache2-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -14,6 +14,8 @@ RUN openssl req -x509 -days 90 -nodes -newkey rsa:4096 \
     -subj "/C=MO/ST=SALE/L=SALE/O=SALE/OU=1337/CN=localhost"
 
 COPY ./conf/nginx.conf /etc/nginx/nginx.conf
+
+RUN htpasswd -bc /etc/nginx/.htpasswd "prometheus" "123qwerty"
 
 EXPOSE 443
 

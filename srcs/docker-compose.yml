@@ -28,6 +28,11 @@ services:
       - mariadb:/var/lib/mysql
     networks:
       - inception
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MARIADB_USER}", "-p${MARIADB_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart:
       on-failure
 
@@ -63,16 +68,101 @@ services:
     build: requirements/bonus/ftp
     container_name: ftp
     image: ftp:mine
+    networks:
+      - inception
+    restart:
+      unless-stopped
+    volumes:
+      - wordpress:/var/www/html
+      - /ftp:/home/ftpuser/ftp
+    ports:
+      - "21:21"
+      - "20:20"
+      - "21000:21000"
+  
+  website:
+    build: requirements/bonus/website
+    container_name: website
+    image: website:static
+    networks:
+      - inception
+    ports:
+      - "3333:3333"
+    restart:
+      always
+  
+  adminer:
+    build: requirements/bonus/adminer
+    container_name: adminer
+    image: adminer:om
+    networks:
+      - inception
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
     env_file:
       - .env
+    restart: always
+  
+  prometheus:
+    build: requirements/bonus/prometheus
+    container_name: prometheus
+    image: prometheus:mine
+    volumes:
+      - prometheus:/prometheus
+      - ./requirements/bonus/prometheus/tools/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+    networks:
+      - inception
+    restart: always
+    
+  mysqld-exporter:
+    build: requirements/bonus/prometheus/mariadb_exporter
+    env_file:
+      - .env
+    ports:
+      - "9104:9104"
+    networks:
+      - inception
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: always
+
+  nginx-exporter:
+    build: requirements/bonus/prometheus/nginx_exporter
+    ports:
+      - "9113:9113"
+    networks:
+      - inception
+    depends_on:
+      - proxy
+    restart: always
+  
+  redis-exporter:
+    build: requirements/bonus/prometheus/redis_exporter
+    ports:
+      - "9121:9121"
+    networks:
+      - inception
+    restart: always
+
+  cadvisor:
+    build: requirements/bonus/prometheus/cadvisor
+    container_name: cadvisor
+    image: cadvisor:mine
+    ports:
+      - "8080:8080"
+    networks:
+      - inception
     depends_on:
       - wordpress
-    networks:
-      - inecption
-    restart:
-      on-failure
+    restart: always
     volumes:
-      - ftp:/etc/ftpd
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro 
 
 volumes:
   wordpress:
@@ -89,6 +179,13 @@ volumes:
       type: bind
       o: bind
       device: "/home/${LOGIN}/data/mariadb"
+  prometheus:
+    name: prometheus
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: "/home/${LOGIN}/data/prometheus"
 
 networks:
   inception:
